@@ -1,0 +1,42 @@
+{
+  "colors": {
+    "light": {
+      "background": "#FFFFFF",
+      "page-bg": "#F8FAFC",
+      "card-bg": "#FFFFFF",
+      "text-primary": "#0F172A",
+      "text-muted": "#64748B",
+      "accent": "#0EA5E9",
+      "accent-dark": "#0369A1"
+    },
+    "dark": {
+      "background": "#071326",
+      "page-bg": "#0B1220",
+      "card-bg": "#0F1724",
+      "text-primary": "#E6EEF6",
+      "text-muted": "#93A6B8",
+      "accent": "#06B6D4",
+      "accent-dark": "#0891B2"
+    }
+  },
+  "spacing": {
+    "card-padding": "1.5rem",
+    "section-gap": "1rem",
+    "element-gap": "0.5rem"
+  },
+  "typography": {
+    "base-size": "16px",
+    "title-size": "20px",
+    "small-size": "14px",
+    "font-family": "Inter, system-ui, sans-serif"
+  },
+  "layout": {
+    "border-radius": "12px",
+    "card-max-width": "768px",
+    "navbar-height": "64px"
+  },
+  "shadows": {
+    "light": "0 6px 20px rgba(2,6,23,0.08)",
+    "dark": "0 0 20px rgba(6,182,212,0.1)"
+  }
+}
