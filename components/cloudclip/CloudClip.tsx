@@ -36,7 +36,7 @@ export default function CloudClip({ room }: { room: string }) {
 
   const [mode, setMode] = useState<Mode>("text")
   const [draft, setDraft] = useState("")
-  const [editing, setEditing] = useState(true)
+  const [editing, setEditing] = useState(false)
   const [editBase, setEditBase] = useState<string | null>(null) // updatedAt of the text we started editing
   const [oneTime, setOneTime] = useState(false)
   const [posting, setPosting] = useState(false)
