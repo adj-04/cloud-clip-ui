@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { formatDistanceToNowStrict } from "date-fns"
+import { Download, Eye, EyeOff, FileIcon, FileText, Film, Music, Trash2 } from "lucide-react"
 import { formatBytes, type RoomFile } from "@/lib/room"
 import { cn, Spinner, t } from "./ui"
 
@@ -20,6 +21,8 @@ function kindOf(f: RoomFile): Kind {
   return "other"
 }
 
+const KIND_ICON = { image: FileIcon, video: Film, audio: Music, pdf: FileText, text: FileText, other: FileIcon }
+
 function TextPreview({ url }: { url: string }) {
   const [text, setText] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
@@ -33,9 +36,9 @@ function TextPreview({ url }: { url: string }) {
       alive = false
     }
   }, [url])
-  if (failed) return <p className={t.dim}>Preview unavailable.</p>
-  if (text === null) return <p className={t.dim}><Spinner /> loading</p>
-  return <pre className={cn("max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13px]", t.fg)}>{text}</pre>
+  if (failed) return <p className={cn("text-sm", t.dim)}>Couldn&apos;t load a preview.</p>
+  if (text === null) return <Spinner className={cn("h-4 w-4", t.dim)} />
+  return <pre className={cn("max-h-72 overflow-auto whitespace-pre-wrap break-words text-[13px]", t.mono, t.fg)}>{text}</pre>
 }
 
 function Preview({ file, kind }: { file: RoomFile; kind: Kind }) {
@@ -43,13 +46,13 @@ function Preview({ file, kind }: { file: RoomFile; kind: Kind }) {
   switch (kind) {
     case "image":
       // eslint-disable-next-line @next/next/no-img-element
-      return <img src={file.url} alt={file.name} className="max-h-96 w-auto" />
+      return <img src={file.url} alt={file.name} className="max-h-[28rem] w-auto rounded-xl" />
     case "video":
-      return <video src={file.url} controls className="max-h-96 w-full" />
+      return <video src={file.url} controls className="max-h-[28rem] w-full rounded-xl" />
     case "audio":
       return <audio src={file.url} controls className="w-full" />
     case "pdf":
-      return <iframe src={file.url} title={file.name} className="h-96 w-full bg-white" />
+      return <iframe src={file.url} title={file.name} className="h-[28rem] w-full rounded-xl bg-white" />
     case "text":
       return <TextPreview url={file.url} />
     default:
@@ -57,9 +60,6 @@ function Preview({ file, kind }: { file: RoomFile; kind: Kind }) {
   }
 }
 
-const ago = (d: string) => formatDistanceToNowStrict(new Date(d), { addSuffix: true })
-
-/** `ls -l`-style listing: size, age, name, then commands. */
 export function FileList({
   files,
   disabled,
@@ -74,61 +74,72 @@ export function FileList({
   const [open, setOpen] = useState<Record<string, boolean>>({})
 
   return (
-    <ul className="space-y-1">
+    <ul className={cn("divide-y overflow-hidden rounded-2xl border", t.line, "divide-[var(--cc-line)]")}>
       {files.map((f) => {
         const kind = kindOf(f)
+        const Icon = KIND_ICON[kind]
         const canPreview = !f.oneTime && kind !== "other" && !!f.url
         const isOpen = open[f.id] ?? false
         return (
-          <li key={f.id}>
-            <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 gap-y-0.5 sm:grid-cols-[8ch_14ch_1fr_auto]">
-              <span className={cn("hidden text-right sm:block", t.dim)}>{formatBytes(f.size)}</span>
-              <span className={cn("hidden sm:block", t.dim)} title={`expires ${ago(f.expiresAt)}`}>
-                {ago(f.createdAt)}
-              </span>
-              <span className="min-w-0">
-                <span className={cn("block truncate", f.oneTime ? t.yellow : t.fg)} title={f.name}>
+          <li key={f.id} className="p-3 sm:p-4">
+            <div className="flex items-center gap-3">
+              {kind === "image" && f.url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={f.url} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+              ) : (
+                <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-lg", t.raised, t.dim)}>
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className={cn("truncate font-medium", t.fg)} title={f.name}>
                   {f.name}
-                  {f.oneTime && <span className={t.dim}> (view once)</span>}
-                </span>
-                <span className={cn("block text-[12px] sm:hidden", t.dim)}>
-                  {formatBytes(f.size)}, {ago(f.createdAt)}
-                </span>
-              </span>
-              <span className="flex items-center whitespace-nowrap">
+                </p>
+                <p className={cn("text-sm", t.dim)}>
+                  {formatBytes(f.size)}, added {formatDistanceToNowStrict(new Date(f.createdAt), { addSuffix: true })}
+                  {f.oneTime && (
+                    <span className="ml-2 rounded-full bg-[var(--cc-accent-soft)] px-2 py-0.5 text-xs font-medium text-[var(--cc-fg)]">
+                      opens once
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-0.5">
                 {canPreview && (
                   <button
                     onClick={() => setOpen((o) => ({ ...o, [f.id]: !isOpen }))}
-                    className={cn(t.cmdDim, t.focus)}
+                    className={cn(t.iconBtn, t.focus)}
                     aria-expanded={isOpen}
                     aria-label={`${isOpen ? "Hide" : "Show"} preview of ${f.name}`}
+                    title={isOpen ? "Hide preview" : "Preview"}
                   >
-                    {isOpen ? "hide" : "view"}
+                    {isOpen ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
                   </button>
                 )}
                 {f.oneTime ? (
-                  <button onClick={() => onClaim(f)} disabled={disabled} className={cn(t.cmd, t.focus)}>
-                    download once
+                  <button onClick={() => onClaim(f)} disabled={disabled} className={cn(t.secondary, t.focus)}>
+                    <Download className="h-4 w-4" /> Download once
                   </button>
                 ) : (
-                  <a href={f.downloadUrl} className={cn(t.cmd, t.focus)} aria-label={`Download ${f.name}`}>
-                    get
+                  <a href={f.downloadUrl} className={cn(t.iconBtn, t.focus)} aria-label={`Download ${f.name}`} title="Download">
+                    <Download className="h-[18px] w-[18px]" />
                   </a>
                 )}
                 {!f.oneTime && (
                   <button
                     onClick={() => onDelete(f)}
                     disabled={disabled}
-                    className={cn(t.cmdDim, "hover:bg-[var(--cc-red)]", t.focus)}
+                    className={cn(t.iconBtn, "hover:text-[var(--cc-red)]", t.focus)}
                     aria-label={`Delete ${f.name}`}
+                    title="Delete"
                   >
-                    rm
+                    <Trash2 className="h-[18px] w-[18px]" />
                   </button>
                 )}
-              </span>
+              </div>
             </div>
             {canPreview && isOpen && (
-              <div className={cn("my-2 border-l-2 pl-3 sm:ml-[calc(22ch+1.5rem)]", t.line)}>
+              <div className={cn("mt-3 rounded-xl p-2", t.raised)}>
                 <Preview file={f} kind={kind} />
               </div>
             )}

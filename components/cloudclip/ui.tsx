@@ -1,56 +1,51 @@
 "use client"
 
 import { useEffect, useRef, type ReactNode } from "react"
+import { X } from "lucide-react"
 
-// Terminal design tokens (CSS variables live in app/globals.css under "CloudClip terminal theme").
+// Design tokens (CSS variables live in app/globals.css under "CloudClip theme").
 export const t = {
   root: "cc-root",
-  win: "bg-[var(--cc-win)] border border-[var(--cc-line)]",
-  bar: "bg-[var(--cc-bar)] border-[var(--cc-line)]",
+  mono: "cc-mono",
+  surface: "bg-[var(--cc-surface)] border border-[var(--cc-line)]",
+  raised: "bg-[var(--cc-raised)]",
   fg: "text-[var(--cc-fg)]",
   dim: "text-[var(--cc-dim)]",
-  blue: "text-[var(--cc-blue)]",
-  green: "text-[var(--cc-green)]",
-  yellow: "text-[var(--cc-yellow)]",
+  accentText: "text-[var(--cc-accent-text)]",
   red: "text-[var(--cc-red)]",
   line: "border-[var(--cc-line)]",
   focus:
-    "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cc-blue)]",
-  /** inline text command: "copy", "edit" */
-  cmd: "inline-flex items-center gap-1 px-1 text-[var(--cc-blue)] hover:bg-[var(--cc-blue)] hover:text-[var(--cc-win)] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[var(--cc-blue)]",
-  /** quieter command */
-  cmdDim:
-    "inline-flex items-center gap-1 px-1 text-[var(--cc-dim)] hover:bg-[var(--cc-dim)] hover:text-[var(--cc-win)] disabled:opacity-40",
-  /** primary: inverse block, like a selected line */
+    "outline-none focus-visible:ring-2 focus-visible:ring-[var(--cc-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--cc-bg)]",
+  /** main action: yellow pill, black text */
   primary:
-    "inline-flex items-center justify-center gap-2 px-4 py-1.5 bg-[var(--cc-fg)] text-[var(--cc-win)] font-medium hover:bg-[var(--cc-blue)] disabled:opacity-40 disabled:hover:bg-[var(--cc-fg)] disabled:cursor-not-allowed",
+    "inline-flex items-center justify-center gap-2 rounded-full bg-[var(--cc-accent)] px-6 py-2.5 font-semibold text-[var(--cc-accent-ink)] transition-[transform,filter] duration-150 hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[var(--cc-raised)] disabled:text-[var(--cc-dim)] disabled:hover:brightness-100 disabled:active:scale-100",
+  /** secondary: outlined pill */
+  secondary:
+    "inline-flex items-center justify-center gap-1.5 rounded-full border border-[var(--cc-line)] px-3.5 py-1.5 text-sm font-medium text-[var(--cc-fg)] transition-colors hover:border-[var(--cc-fg)] disabled:opacity-40",
+  /** quiet text button */
+  ghost:
+    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm text-[var(--cc-dim)] transition-colors hover:bg-[var(--cc-raised)] hover:text-[var(--cc-fg)] disabled:opacity-40",
+  iconBtn:
+    "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--cc-dim)] transition-colors hover:bg-[var(--cc-raised)] hover:text-[var(--cc-fg)]",
   field:
-    "bg-transparent border border-[var(--cc-line)] text-[var(--cc-fg)] placeholder:text-[var(--cc-dim)] focus:border-[var(--cc-blue)] outline-none",
+    "rounded-xl border border-[var(--cc-line)] bg-[var(--cc-bg)] px-3 py-2 text-[var(--cc-fg)] placeholder:text-[var(--cc-dim)] outline-none focus:border-[var(--cc-accent)]",
+  link: "underline decoration-[var(--cc-accent)] decoration-2 underline-offset-4 hover:decoration-[var(--cc-fg)]",
 }
 
 export function cn(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ")
 }
 
-/** Braille spinner, as terminals do. */
-export function Spinner({ className = "" }: { className?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const frames = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-    let i = 0
-    const id = setInterval(() => {
-      if (ref.current) ref.current.textContent = frames[(i = (i + 1) % frames.length)]
-    }, 80)
-    return () => clearInterval(id)
-  }, [])
+export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   return (
-    <span ref={ref} className={cn("inline-block w-[1ch]", className)} aria-hidden>
-      ⠋
-    </span>
+    <svg className={cn("animate-spin", className)} fill="none" viewBox="0 0 24 24" aria-hidden>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+    </svg>
   )
 }
 
-// ------------------------------------------------------------ dialog (a small window)
+// ------------------------------------------------------------ dialog
 
 export function Dialog({
   open,
@@ -84,56 +79,64 @@ export function Dialog({
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[var(--cc-bg)]/80" onClick={dismissible ? onClose : undefined} aria-hidden />
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className={cn("relative w-full max-w-md shadow-2xl", t.win)}>
-        <div className={cn("flex items-center justify-between border-b px-3 py-1.5 text-[13px]", t.bar)}>
-          <span className={t.fg}>{title}</span>
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" onClick={dismissible ? onClose : undefined} aria-hidden />
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={cn("relative w-full max-w-md rounded-3xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150", t.surface)}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 className={cn("text-xl font-semibold tracking-tight", t.fg)}>{title}</h2>
           {dismissible && (
-            <button onClick={onClose} className={cn(t.cmdDim, t.focus)} aria-label="Close">
-              esc
+            <button onClick={onClose} className={cn(t.iconBtn, "-mr-2 -mt-1", t.focus)} aria-label="Close">
+              <X className="h-5 w-5" />
             </button>
           )}
         </div>
-        <div className="p-4">{children}</div>
+        {children}
       </div>
     </div>
   )
 }
 
-// ------------------------------------------------------------ toasts (output lines)
+// ------------------------------------------------------------ toasts
 
 export type ToastMsg = { id: number; message: string; type: "success" | "error"; action?: { label: string; onClick: () => void } }
 
 export function Toasts({ toasts, dismiss }: { toasts: ToastMsg[]; dismiss: (id: number) => void }) {
   return (
     <div
-      className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(100vw-2rem,26rem)] flex-col gap-1"
+      className="pointer-events-none fixed inset-x-0 bottom-5 z-[60] flex flex-col items-center gap-2 px-4"
       role="status"
       aria-live="polite"
     >
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={cn("pointer-events-auto flex items-start gap-2 px-3 py-2 text-[13px] shadow-lg", t.win, "animate-in fade-in slide-in-from-bottom-1 duration-150")}
+          className={cn(
+            "pointer-events-auto flex max-w-md items-center gap-3 rounded-full py-2 pl-4 pr-2 text-sm font-medium shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-200",
+            toast.type === "success"
+              ? "bg-[var(--cc-fg)] text-[var(--cc-bg)]"
+              : "bg-[var(--cc-red)] text-white",
+          )}
         >
-          <span className={toast.type === "success" ? t.green : t.red} aria-hidden>
-            {toast.type === "success" ? "✓" : "✗"}
-          </span>
-          <span className={cn("flex-1", t.fg)}>{toast.message}</span>
+          <span className="flex-1">{toast.message}</span>
           {toast.action && (
             <button
               onClick={() => {
                 toast.action!.onClick()
                 dismiss(toast.id)
               }}
-              className={t.cmd}
+              className="rounded-full bg-[var(--cc-accent)] px-3 py-1 text-[var(--cc-accent-ink)]"
             >
               {toast.action.label}
             </button>
           )}
-          <button onClick={() => dismiss(toast.id)} aria-label="Close" className={t.cmdDim}>
-            ×
+          <button onClick={() => dismiss(toast.id)} aria-label="Close" className="rounded-full p-1 opacity-60 hover:opacity-100">
+            <X className="h-4 w-4" />
           </button>
         </div>
       ))}

@@ -3,6 +3,25 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from "react"
 import { useTheme } from "next-themes"
 import { formatDistanceToNowStrict } from "date-fns"
+import {
+  Check,
+  ClipboardIcon,
+  Copy,
+  History,
+  Link as LinkIcon,
+  Lock,
+  LockOpen,
+  Moon,
+  Pencil,
+  Plus,
+  QrCode,
+  RefreshCw,
+  Send,
+  Sparkles,
+  Sun,
+  Upload,
+  X,
+} from "lucide-react"
 import { api, ApiError, setRoomPassword } from "@/lib/client/api"
 import { useRoomLive } from "@/lib/client/realtime"
 import { LIMITS, formatBytes, isValidRoom, type RoomFile, type RoomState } from "@/lib/room"
@@ -56,12 +75,12 @@ export default function CloudClip({ room }: { room: string }) {
 
   const copyLink = useCallback(async () => {
     const ok = await copyText(roomUrl)
-    toast(ok ? "Copied!" : "Couldn't copy link", ok ? "success" : "error")
+    toast(ok ? "Room link copied" : "Couldn't copy the link", ok ? "success" : "error")
   }, [roomUrl, toast])
 
   const copyAndToast = async (value: string) => {
     const ok = await copyText(value)
-    toast(ok ? "Copied!" : "Couldn't copy", ok ? "success" : "error")
+    toast(ok ? "Copied to your clipboard" : "Couldn't copy that", ok ? "success" : "error")
   }
 
   const handleApiError = useCallback(
@@ -150,7 +169,7 @@ export default function CloudClip({ room }: { room: string }) {
     try {
       await api.saveText(room, draft, oneTime)
       const copied = await copyText(roomUrl)
-      toast(copied ? `Posted to ${room}, link copied` : `Posted to ${room}`, "success", copied ? undefined : { label: "copy link", onClick: copyLink })
+      toast(copied ? `Sent to ${room}. Link copied, share it anywhere.` : `Sent to ${room}`, "success", copied ? undefined : { label: "Copy link", onClick: copyLink })
       setPosted(true)
       setTimeout(() => setPosted(false), 2000)
       setEditBase(null)
@@ -317,7 +336,7 @@ export default function CloudClip({ room }: { room: string }) {
       await api.lock(room, pw)
       setRoomPassword(room, pw)
       setDialog(null)
-      toast("Room locked. Share the password separately.")
+      toast("Room locked. Share the password separately from the link.")
       notify()
       await load()
     } catch (e) {
@@ -346,152 +365,200 @@ export default function CloudClip({ room }: { room: string }) {
   const fileCount = state?.files.length ?? 0
 
   return (
-    <div className={cn(t.root, "flex min-h-dvh flex-col items-center sm:justify-center sm:p-6")}>
-      <div className={cn("flex w-full max-w-3xl flex-1 flex-col sm:min-h-[30rem] sm:flex-none sm:shadow-2xl", t.win)}>
-        <TopBar
-          mode={mode}
-          setMode={setMode}
-          fileCount={fileCount}
-          room={room}
-          onCopy={copyLink}
-          onQr={() => setDialog("qr")}
-        />
+    <div className={cn(t.root, "min-h-dvh")}>
+      <Header />
 
-        <main className="flex-1 px-4 py-5 sm:px-6">
+      <main className="mx-auto w-full max-w-3xl px-5 pb-16">
+        {/* Room identity */}
+        <section className="mb-8 mt-8 sm:mt-14">
+          <p className={cn("mb-1", t.dim)}>Your room</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <h1 className={cn("break-all text-4xl font-semibold tracking-tight sm:text-5xl", t.mono, t.fg)}>{room}</h1>
+            <div className="flex items-center gap-2">
+              <button onClick={copyLink} className={cn(t.secondary, t.focus)} aria-label="Copy room link">
+                <LinkIcon className="h-4 w-4" /> Copy link
+              </button>
+              <button onClick={() => setDialog("qr")} className={cn(t.secondary, t.focus)} aria-label={`Show QR code for room ${room}`}>
+                <QrCode className="h-4 w-4" /> QR
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+            <span className={cn("inline-flex items-center gap-2", connected ? t.fg : t.dim)}>
+              <span className={cn("h-2 w-2 rounded-full", connected ? "cc-live bg-[var(--cc-accent)]" : "bg-[var(--cc-dim)]")} />
+              {connected ? (online > 1 ? `${online} devices here right now` : "Live. Open it on another device to sync") : "Connecting…"}
+            </span>
+            <button
+              onClick={() => setDialog("lock")}
+              disabled={!state}
+              className={cn("inline-flex items-center gap-1.5 disabled:opacity-40", t.dim, "hover:text-[var(--cc-fg)]", t.focus)}
+              aria-label={state?.locked ? "Manage room lock" : "Lock room"}
+            >
+              {state?.locked ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
+              {state?.locked ? "Locked with a password" : "Open to anyone with the link"}
+            </button>
+          </div>
+        </section>
+
+        {/* Text / Files switch */}
+        <div role="tablist" aria-label="Content type" className={cn("mb-4 inline-flex rounded-full p-1", t.raised)}>
+          {(["text", "file"] as const).map((m) => (
+            <button
+              key={m}
+              role="tab"
+              aria-selected={mode === m}
+              aria-label={m === "text" ? "Text" : "File"}
+              onClick={() => setMode(m)}
+              className={cn(
+                "rounded-full px-5 py-1.5 text-sm font-semibold transition-colors duration-150",
+                t.focus,
+                mode === m ? "bg-[var(--cc-accent)] text-[var(--cc-accent-ink)]" : cn(t.dim, "hover:text-[var(--cc-fg)]"),
+              )}
+            >
+              {m === "text" ? "Text" : fileCount ? `Files (${fileCount})` : "Files"}
+            </button>
+          ))}
+        </div>
+
+        <section className={cn("rounded-3xl p-5 sm:p-7", t.surface)}>
           {!state ? (
-            <p className={t.dim}>
+            <div className={cn("flex items-center gap-3 py-8", t.dim)}>
               {needsPassword ? (
-                "Waiting for the room password."
+                <>
+                  <Lock className="h-5 w-5" /> Waiting for the room password…
+                </>
               ) : loadError ? (
                 <>
-                  <span className={t.red}>✗ {loadError}</span>{" "}
-                  <button onClick={load} className={cn(t.cmd, t.focus)}>
-                    retry
+                  <span className={t.red}>{loadError}</span>
+                  <button onClick={load} className={cn(t.secondary, t.focus)}>
+                    <RefreshCw className="h-4 w-4" /> Try again
                   </button>
                 </>
               ) : (
                 <>
-                  <Prompt cmd={`open ${room}`} /> <span className="cc-cursor" />
+                  <Spinner /> Opening room…
                 </>
               )}
-            </p>
+            </div>
           ) : mode === "text" ? (
-            <section aria-label="Text">
-              {revealed !== null ? (
-                <>
-                  <PromptRow cmd="cat clip">
-                    <button onClick={() => copyAndToast(revealed)} className={cn(t.cmd, t.focus)} aria-label="Copy text">
-                      copy
-                    </button>
-                    <button onClick={() => setRevealed(null)} className={cn(t.cmdDim, t.focus)}>
-                      close
-                    </button>
-                  </PromptRow>
-                  <Output>{revealed}</Output>
-                  <p className={cn("mt-3", t.yellow)}>This message has been deleted from the server. Copy it now if you need it.</p>
-                </>
-              ) : showOneTimeWaiting ? (
-                <>
-                  <PromptRow cmd="cat clip" />
-                  {sentOneTime ? (
-                    <div className="space-y-3">
-                      <p className={t.green}>✓ One-time message posted. It disappears after someone opens it.</p>
-                      <button onClick={() => { setSentOneTime(false); startEdit() }} className={cn(t.cmd, t.focus)}>
-                        replace it
-                      </button>
+            revealed !== null ? (
+              <>
+                <TextActions>
+                  <span className={cn("mr-auto text-sm", t.dim)}>One-time message</span>
+                  <button onClick={() => copyAndToast(revealed)} className={cn(t.secondary, t.focus)} aria-label="Copy text">
+                    <Copy className="h-4 w-4" /> Copy
+                  </button>
+                  <button onClick={() => setRevealed(null)} className={cn(t.ghost, t.focus)}>
+                    Close
+                  </button>
+                </TextActions>
+                <Body>{revealed}</Body>
+                <p className={cn("mt-5 rounded-2xl bg-[var(--cc-accent-soft)] px-4 py-3 text-sm", t.fg)}>
+                  This message has now been deleted from the server, so copy it if you need it.
+                </p>
+              </>
+            ) : showOneTimeWaiting ? (
+              <div className="flex flex-col items-start gap-4 py-4">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--cc-accent)] text-[var(--cc-accent-ink)]">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                {sentOneTime ? (
+                  <>
+                    <div>
+                      <p className={cn("text-xl font-semibold", t.fg)}>Your one-time message is waiting</p>
+                      <p className={t.dim}>It disappears as soon as someone opens it.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className={t.yellow}>A one-time message is waiting. Reading it deletes it for everyone.</p>
-                      <button onClick={reveal} disabled={revealing} className={cn(t.primary, t.focus)} aria-label="Reveal message">
-                        {revealing && <Spinner />} reveal
-                      </button>
+                    <button onClick={() => { setSentOneTime(false); startEdit() }} className={cn(t.secondary, t.focus)}>
+                      <Pencil className="h-4 w-4" /> Replace it
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <p className={cn("text-xl font-semibold", t.fg)}>Someone left you a one-time message</p>
+                      <p className={t.dim}>It will be deleted for everyone once you open it.</p>
                     </div>
+                    <button onClick={reveal} disabled={revealing} className={cn(t.primary, t.focus)}>
+                      {revealing && <Spinner />} Reveal message
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : editing ? (
+              <>
+                {remoteChanged && (
+                  <p className={cn("mb-4 flex flex-wrap items-center gap-2 rounded-2xl bg-[var(--cc-accent-soft)] px-4 py-2.5 text-sm", t.fg)}>
+                    Someone just updated this on another device.
+                    <button
+                      onClick={() => { setDraft(text?.body ?? ""); setEditBase(text?.updatedAt ?? null) }}
+                      className={cn("font-semibold", t.link)}
+                    >
+                      Load their version
+                    </button>
+                  </p>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                      e.preventDefault()
+                      postText()
+                    }
+                    if (e.key === "Escape" && text?.body) cancelEdit()
+                  }}
+                  placeholder="Paste or type text here..."
+                  aria-label="Clipboard text"
+                  autoFocus
+                  spellCheck={false}
+                  rows={9}
+                  className={cn(
+                    "min-h-[11rem] w-full resize-y bg-transparent text-[15px] leading-relaxed caret-[var(--cc-accent)] outline-none placeholder:text-[var(--cc-dim)]",
+                    t.mono,
+                    t.fg,
                   )}
-                </>
-              ) : editing ? (
-                <>
-                  {remoteChanged && (
-                    <p className={cn("mb-3", t.yellow)}>
-                      Updated on another device.{" "}
-                      <button
-                        onClick={() => { setDraft(text?.body ?? ""); setEditBase(text?.updatedAt ?? null) }}
-                        className={cn(t.cmd, t.focus)}
-                      >
-                        load latest
-                      </button>
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <span className={cn("select-none pt-[2px]", t.blue)} aria-hidden>
-                      $
-                    </span>
-                    <textarea
-                      ref={textareaRef}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                          e.preventDefault()
-                          postText()
-                        }
-                        if (e.key === "Escape" && text?.body) cancelEdit()
-                      }}
-                      placeholder="Paste or type text here..."
-                      aria-label="Clipboard text"
-                      autoFocus
-                      spellCheck={false}
-                      rows={10}
-                      className={cn(
-                        "min-h-[9rem] w-full resize-y bg-transparent caret-[var(--cc-blue)] outline-none placeholder:text-[var(--cc-dim)]",
-                        t.fg,
-                      )}
-                    />
-                  </div>
-                  <div className={cn("mt-2 flex items-center justify-between border-t pt-3", t.line)}>
-                    <OneTimeToggle checked={oneTime} onChange={setOneTime} what="text" />
-                    <span className={cn("text-[13px]", charCount > LIMITS.textChars ? t.red : t.dim)}>
-                      {charCount.toLocaleString()}/{LIMITS.textChars.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-                    {postError && <span className={cn("mr-auto", t.red)} role="alert">✗ {postError}</span>}
+                />
+                <div className={cn("mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t pt-4", t.line)}>
+                  <OneTimeSwitch checked={oneTime} onChange={setOneTime} />
+                  <span className={cn("text-sm tabular-nums", charCount > LIMITS.textChars ? t.red : t.dim)}>
+                    {charCount.toLocaleString()} / {LIMITS.textChars.toLocaleString()}
+                  </span>
+                  <div className="ml-auto flex items-center gap-2">
                     {text && text.body && (
-                      <button onClick={cancelEdit} className={cn(t.cmdDim, t.focus)} aria-label="Cancel">
-                        cancel <Key>esc</Key>
+                      <button onClick={cancelEdit} className={cn(t.ghost, t.focus)} aria-label="Cancel">
+                        Cancel
                       </button>
                     )}
                     <button onClick={postText} disabled={posting || !draft.trim()} className={cn(t.primary, t.focus)} aria-label="Send / Post">
-                      {posting ? <><Spinner /> posting</> : posted ? "posted" : <>post <Key inverse>ctrl ⏎</Key></>}
+                      {posting ? <><Spinner /> Sending</> : posted ? <><Check className="h-4 w-4" /> Sent</> : <><Send className="h-4 w-4" /> Send</>}
                     </button>
                   </div>
-                </>
-              ) : (
-                <>
-                  <PromptRow cmd="cat clip">
-                    <button onClick={() => copyAndToast(text?.body ?? "")} className={cn(t.cmd, t.focus)} aria-label="Copy text">
-                      copy
-                    </button>
-                    <button onClick={() => setDialog("history")} className={cn(t.cmdDim, t.focus)} aria-label="Previous versions">
-                      history
-                    </button>
-                    <button onClick={startEdit} className={cn(t.cmd, t.focus)} aria-label="Edit text">
-                      edit
-                    </button>
-                  </PromptRow>
-                  <Output>{text?.body ?? ""}</Output>
-                  {text && (
-                    <p className={cn("mt-4 text-[13px]", t.dim)}>
-                      # updated {formatDistanceToNowStrict(new Date(text.updatedAt), { addSuffix: true })}, deleted{" "}
-                      {formatDistanceToNowStrict(new Date(text.expiresAt), { addSuffix: true })}
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
+                </div>
+                {postError && <p className={cn("mt-3 text-sm", t.red)} role="alert">{postError}</p>}
+                <p className={cn("mt-3 hidden text-xs sm:block", t.dim)}>Tip: Ctrl + Enter sends.</p>
+              </>
+            ) : (
+              <>
+                <TextActions>
+                  <span className={cn("mr-auto text-sm", t.dim)}>
+                    {text ? `Sent ${formatDistanceToNowStrict(new Date(text.updatedAt), { addSuffix: true })}` : ""}
+                  </span>
+                  <button onClick={() => setDialog("history")} className={cn(t.ghost, t.focus)} aria-label="Previous versions">
+                    <History className="h-4 w-4" /> <span className="hidden sm:inline">History</span>
+                  </button>
+                  <button onClick={startEdit} className={cn(t.ghost, t.focus)} aria-label="Edit text">
+                    <Pencil className="h-4 w-4" /> Edit
+                  </button>
+                  <button onClick={() => copyAndToast(text?.body ?? "")} className={cn(t.primary, "px-4 py-1.5 text-sm", t.focus)} aria-label="Copy text">
+                    <Copy className="h-4 w-4" /> Copy
+                  </button>
+                </TextActions>
+                <Body>{text?.body ?? ""}</Body>
+              </>
+            )
           ) : (
-            <section aria-label="Files" className="space-y-4">
-              <PromptRow cmd={`ls ${room}`} />
+            <div className="space-y-5">
               <div
                 role="button"
                 tabIndex={0}
@@ -503,72 +570,78 @@ export default function CloudClip({ room }: { room: string }) {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
                 className={cn(
-                  "cursor-pointer border border-dashed px-4 py-6 text-center transition-colors",
+                  "flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-6 text-center transition-colors duration-150",
+                  fileCount ? "py-7" : "py-12",
                   t.focus,
-                  dragOver ? "border-[var(--cc-blue)] bg-[var(--cc-sel)]" : cn(t.line, "hover:border-[var(--cc-dim)]"),
+                  dragOver ? "border-[var(--cc-accent)] bg-[var(--cc-accent-soft)]" : cn(t.line, "hover:border-[var(--cc-dim)]"),
                   roomFull && "cursor-not-allowed opacity-50",
                 )}
               >
-                <p className={t.fg}>
-                  Drop files here, paste a screenshot, or <span className={cn(t.blue, "underline underline-offset-4")}>choose files</span>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--cc-accent)] text-[var(--cc-accent-ink)]">
+                  <Upload className="h-5 w-5" />
+                </span>
+                <p className={cn("text-lg font-medium", t.fg)}>
+                  Drop files here or <span className={t.link}>choose files</span>
                 </p>
-                <p className={cn("mt-1 text-[13px]", t.dim)}>Up to 10 MB each. Kept for {LIMITS.fileTtlDays} days.</p>
+                <p className={cn("text-sm", t.dim)}>Up to 10 MB each. You can also paste a screenshot.</p>
               </div>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
 
-              <OneTimeToggle checked={oneTime} onChange={setOneTime} what="files you add next" />
+              <OneTimeSwitch checked={oneTime} onChange={setOneTime} />
 
-              {roomFull && <p className={t.red}>✗ Upload failed — room storage limit reached (1 GB).</p>}
+              {roomFull && <p className={t.red}>Upload failed — room storage limit reached (1 GB).</p>}
               {!roomFull && state.storageUsed > LIMITS.roomBytes * 0.8 && (
-                <p className={t.yellow}>Room storage almost full: {formatBytes(state.storageUsed)} of 1 GB used.</p>
+                <p className={t.dim}>This room is nearly full: {formatBytes(state.storageUsed)} of 1 GB used.</p>
               )}
 
               {uploads.length > 0 && (
-                <ul className="space-y-1">
+                <ul className="space-y-3">
                   {uploads.map((u) => (
-                    <li key={u.key} className="flex flex-wrap items-center gap-x-3">
-                      <span className={cn("min-w-0 flex-1 truncate", t.fg)}>{u.name}</span>
-                      {u.error ? (
-                        <>
-                          <span className={t.red}>✗ {u.error}</span>
-                          <button onClick={() => retryUpload(u)} className={cn(t.cmd, t.focus)}>retry</button>
-                          <button onClick={() => setUploads((us) => us.filter((x) => x.key !== u.key))} className={cn(t.cmdDim, t.focus)} aria-label="Dismiss">
-                            dismiss
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <Bar pct={u.progress} />
-                          <button onClick={() => u.abort.abort()} className={cn(t.cmdDim, t.focus)} aria-label={`Cancel upload of ${u.name}`}>
-                            cancel
-                          </button>
-                        </>
-                      )}
+                    <li key={u.key}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                        <span className={cn("truncate font-medium", t.fg)}>{u.name}</span>
+                        {u.error ? (
+                          <span className="flex shrink-0 items-center gap-1">
+                            <span className={t.red}>{u.error}</span>
+                            <button onClick={() => retryUpload(u)} className={cn(t.ghost, t.focus)}>Retry</button>
+                            <button onClick={() => setUploads((us) => us.filter((x) => x.key !== u.key))} className={cn(t.ghost, t.focus)} aria-label="Dismiss">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </span>
+                        ) : (
+                          <span className="flex shrink-0 items-center gap-2">
+                            <span className={cn("tabular-nums", t.dim)}>{u.progress}%</span>
+                            <button onClick={() => u.abort.abort()} className={cn(t.ghost, t.focus)} aria-label={`Cancel upload of ${u.name}`}>
+                              Cancel
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                      <div className={cn("h-1.5 overflow-hidden rounded-full", t.raised)}>
+                        <div
+                          className={cn("h-full rounded-full transition-[width] duration-200", u.error ? "bg-[var(--cc-red)]" : "bg-[var(--cc-accent)]")}
+                          style={{ width: `${u.progress}%` }}
+                          role="progressbar"
+                          aria-valuenow={u.progress}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
 
-              {fileCount > 0 ? (
-                <FileList files={state.files} disabled={busyFile} onDelete={deleteFile} onClaim={claimFile} />
-              ) : (
-                uploads.length === 0 && <p className={t.dim}>No files in this room yet.</p>
-              )}
-            </section>
+              {fileCount > 0 && <FileList files={state.files} disabled={busyFile} onDelete={deleteFile} onClaim={claimFile} />}
+            </div>
           )}
-        </main>
+        </section>
 
-        <StatusLine
-          room={room}
-          locked={!!state?.locked}
-          live={connected}
-          online={online}
-          canLock={!!state}
-          onLock={() => setDialog("lock")}
-        />
-      </div>
-
-      <JoinRoom />
+        <footer className={cn("mt-6 flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between", t.dim)}>
+          <p>Text disappears after {LIMITS.textTtlDays} days, files after {LIMITS.fileTtlDays}.</p>
+          <JoinRoom />
+        </footer>
+      </main>
 
       <Toasts toasts={toasts} dismiss={(id) => setToasts((ts) => ts.filter((x) => x.id !== id))} />
       <UnlockDialog open={needsPassword} room={room} onSubmit={submitPassword} />
@@ -583,7 +656,7 @@ export default function CloudClip({ room }: { room: string }) {
           setDraft(v.body)
           setEditBase(text?.updatedAt ?? null)
           setEditing(true)
-          toast("Version restored into the editor. Post it to save.")
+          toast("Restored into the editor. Press Send to keep it.")
         }}
       />
     </div>
@@ -592,170 +665,75 @@ export default function CloudClip({ room }: { room: string }) {
 
 // ------------------------------------------------------------ pieces
 
-function Prompt({ cmd }: { cmd: string }) {
-  return (
-    <span>
-      <span className={t.blue}>$</span> <span className={t.fg}>{cmd}</span>
-    </span>
-  )
+function TextActions({ children }: { children: ReactNode }) {
+  return <div className="mb-4 flex flex-wrap items-center gap-1.5">{children}</div>
 }
 
-function PromptRow({ cmd, children }: { cmd: string; children?: ReactNode }) {
+function Body({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <Prompt cmd={cmd} />
-      {children && <div className="flex items-center gap-1">{children}</div>}
+    <div className={cn("max-h-[55vh] overflow-auto whitespace-pre-wrap break-words text-[15px] leading-relaxed", t.mono, t.fg)}>
+      {children || <span className={t.dim}>Nothing here yet.</span>}
     </div>
   )
 }
 
-function Output({ children }: { children: ReactNode }) {
-  return <div className={cn("max-h-[55vh] overflow-auto whitespace-pre-wrap break-words", t.fg)}>{children || <span className={t.dim}>(empty)</span>}</div>
-}
-
-function Key({ children, inverse }: { children: ReactNode; inverse?: boolean }) {
-  return <kbd className={cn("ml-1 hidden px-1 text-[12px] font-normal sm:inline", inverse ? "opacity-60" : t.dim)}>{children}</kbd>
-}
-
-/** Text progress bar: [██████░░░░] 60% */
-function Bar({ pct }: { pct: number }) {
-  const width = 16
-  const filled = Math.round((pct / 100) * width)
-  return (
-    <span role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} className="whitespace-nowrap">
-      <span className={t.blue}>{"█".repeat(filled)}</span>
-      <span className={t.dim}>{"░".repeat(width - filled)}</span>
-      <span className={cn("ml-2 inline-block w-[4ch] text-right", t.dim)}>{pct}%</span>
-    </span>
-  )
-}
-
-function OneTimeToggle({ checked, onChange, what }: { checked: boolean; onChange: (v: boolean) => void; what: string }) {
+function OneTimeSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label
-      className="flex cursor-pointer select-none items-center gap-2"
-      title="When enabled, the item is permanently deleted after the first person opens it."
+      className="inline-flex cursor-pointer select-none items-center gap-2.5 text-sm"
+      title="The item is deleted for everyone after the first person opens it."
     >
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
-      <span className={cn("peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[var(--cc-blue)]", checked ? t.yellow : t.dim)} aria-hidden>
-        [{checked ? "x" : " "}]
+      <span
+        aria-hidden
+        className={cn(
+          "relative h-5 w-9 rounded-full transition-colors duration-150 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--cc-accent)]",
+          checked ? "bg-[var(--cc-accent)]" : "bg-[var(--cc-line)]",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 h-4 w-4 rounded-full transition-transform duration-150",
+            checked ? "translate-x-[18px] bg-[var(--cc-accent-ink)]" : "translate-x-0.5 bg-[var(--cc-fg)]",
+          )}
+        />
       </span>
-      <span className={checked ? t.yellow : t.dim}>
-        one-time view{checked ? `: ${what} will be deleted after the first view` : ""}
-      </span>
+      <span className={checked ? t.fg : t.dim}>{checked ? "One-time view: deleted after it's opened once" : "One-time view"}</span>
     </label>
   )
 }
 
-function TopBar({
-  mode,
-  setMode,
-  fileCount,
-  room,
-  onCopy,
-  onQr,
-}: {
-  mode: "text" | "file"
-  setMode: (m: "text" | "file") => void
-  fileCount: number
-  room: string
-  onCopy: () => void
-  onQr: () => void
-}) {
+function Header() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
   const dark = !mounted || resolvedTheme === "dark"
 
-  const tabs: { id: "text" | "file"; label: string }[] = [
-    { id: "text", label: "0:text" },
-    { id: "file", label: fileCount ? `1:files(${fileCount})` : "1:files" },
-  ]
-
   return (
-    <header className={cn("flex items-center gap-4 border-b px-3 py-1.5 text-[13px] sm:px-4", t.bar)}>
-      <a href="/" className={cn("font-semibold", t.fg, t.focus)} title="Start a new room">
-        cloudclip
+    <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 pt-5">
+      <a href="/" className={cn("inline-flex items-center gap-2.5 rounded-full", t.focus)} title="Start a new room">
+        <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[var(--cc-accent)] text-[var(--cc-accent-ink)]">
+          <ClipboardIcon className="h-[18px] w-[18px]" strokeWidth={2.4} />
+        </span>
+        <span className={cn("text-lg font-bold tracking-tight", t.fg)}>cloudclip</span>
       </a>
-      <nav role="tablist" aria-label="Content type" className="flex items-center gap-1">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={mode === tab.id}
-            aria-label={tab.id === "text" ? "Text" : "File"}
-            onClick={() => setMode(tab.id)}
-            className={cn(
-              "px-1.5",
-              t.focus,
-              mode === tab.id ? "bg-[var(--cc-fg)] text-[var(--cc-bar)]" : cn(t.dim, "hover:text-[var(--cc-fg)]"),
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      <div className="ml-auto flex items-center gap-1">
-        <button onClick={onQr} className={cn(t.cmdDim, t.focus)} aria-label={`Show QR code for room ${room}`} title="Open on your phone">
-          qr
-        </button>
-        <button onClick={onCopy} className={cn(t.cmdDim, t.focus)} aria-label="Copy room link" title="Copy room link">
-          link
-        </button>
+      <div className="flex items-center gap-1">
+        <span className="hidden sm:block">
+          <a href="/" className={cn(t.ghost, t.focus)}>
+            <Plus className="h-4 w-4" /> New room
+          </a>
+        </span>
         <button
           onClick={() => setTheme(dark ? "light" : "dark")}
-          className={cn(t.cmdDim, t.focus)}
+          className={cn(t.iconBtn, t.focus)}
           aria-pressed={dark}
           aria-label="Toggle light / dark"
           title="Toggle light / dark"
         >
-          {dark ? "light" : "dark"}
+          {dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
         </button>
       </div>
     </header>
-  )
-}
-
-/** tmux-style status line: room, access, connection, expiry. */
-function StatusLine({
-  room,
-  locked,
-  live,
-  online,
-  canLock,
-  onLock,
-}: {
-  room: string
-  locked: boolean
-  live: boolean
-  online: number
-  canLock: boolean
-  onLock: () => void
-}) {
-  return (
-    <footer className={cn("flex flex-wrap items-stretch border-t text-[13px]", t.bar)}>
-      <span className="bg-[var(--cc-blue)] px-3 py-1 font-medium text-[var(--cc-win)]" title="Room name">
-        {room}
-      </span>
-      <button
-        onClick={onLock}
-        disabled={!canLock}
-        className={cn("px-3 py-1 hover:bg-[var(--cc-line)] disabled:opacity-50", locked ? t.yellow : t.dim, t.focus)}
-        aria-label={locked ? "Manage room lock" : "Lock room"}
-        title={locked ? "Password required. Click to change or remove." : "Anyone with the link can read and edit. Click to lock."}
-      >
-        {locked ? "locked" : "public"}
-      </button>
-      <span
-        className={cn("px-3 py-1", live ? t.green : t.dim)}
-        title={live ? "Changes appear instantly on every open device" : "Live sync unavailable; checking every 5 seconds"}
-      >
-        {live ? `● ${online} online` : "○ connecting"}
-      </span>
-      <span className={cn("ml-auto hidden px-3 py-1 sm:inline", t.dim)}>
-        text {LIMITS.textTtlDays}d, files {LIMITS.fileTtlDays}d
-      </span>
-    </footer>
   )
 }
 
@@ -767,21 +745,22 @@ function JoinRoom() {
     if (valid) window.location.assign(`/clip/${name.trim()}`)
   }
   return (
-    <form onSubmit={go} className="cc-root flex w-full max-w-3xl items-center gap-2 px-4 py-4 text-[13px] sm:px-0">
-      <label htmlFor="join-room" className={t.dim}>
-        open another room:
-      </label>
+    <form onSubmit={go} className={cn("flex items-center gap-1 rounded-full py-1 pl-4 pr-1", t.raised)}>
       <input
-        id="join-room"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        placeholder="Have a room name?"
         aria-label="Room name to open"
         spellCheck={false}
         autoCapitalize="none"
-        className={cn("min-w-0 flex-1 border-b px-1 py-0.5", t.line, "bg-transparent outline-none focus:border-[var(--cc-blue)]", t.fg)}
+        className={cn("w-40 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--cc-dim)] sm:w-44", t.mono, t.fg)}
       />
-      <button type="submit" disabled={!valid} className={cn(t.cmd, t.focus)}>
-        open
+      <button
+        type="submit"
+        disabled={!valid}
+        className="rounded-full bg-[var(--cc-fg)] px-3.5 py-1 text-sm font-semibold text-[var(--cc-bg)] disabled:opacity-30"
+      >
+        Open
       </button>
     </form>
   )

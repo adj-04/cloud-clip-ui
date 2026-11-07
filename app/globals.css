@@ -124,46 +124,49 @@
   }
 }
 
-/* ---------------------------------------------------------------- CloudClip terminal theme
-   ANSI-style roles: fg/dim for text, blue = actions & prompt, green = success/online,
-   yellow = one-time & locked, red = errors. */
-:root {
-  --cc-bg: #e9ecf0;
-  --cc-win: #f7f8fa;
-  --cc-bar: #dfe3e8;
-  --cc-line: #c9ced6;
-  --cc-fg: #1d2127;
-  --cc-dim: #5f6773;
-  --cc-blue: #2453c7;
-  --cc-green: #2f7d32;
-  --cc-yellow: #8a5d00;
-  --cc-red: #c22a2a;
-  --cc-sel: #d3ddf3;
-}
+/* ---------------------------------------------------------------- CloudClip theme: black, yellow, white
+   Yellow is reserved for what you act on (send, active tab, live dot). Red only for errors. */
 .dark {
-  --cc-bg: #111317;
-  --cc-win: #181b20;
-  --cc-bar: #1f232a;
-  --cc-line: #2c313a;
-  --cc-fg: #d8dbe0;
-  --cc-dim: #858c97;
-  --cc-blue: #84a9ff;
-  --cc-green: #9fd67a;
-  --cc-yellow: #e6c178;
-  --cc-red: #f0727a;
-  --cc-sel: #2a3550;
+  --cc-bg: #000000;
+  --cc-surface: #141414;
+  --cc-raised: #1d1d1d;
+  --cc-line: #2a2a2a;
+  --cc-fg: #f7f7f2;
+  --cc-dim: #a3a39b;
+  --cc-accent: #ffd43b;
+  --cc-accent-ink: #000000;
+  --cc-accent-text: #ffd43b;
+  --cc-accent-soft: rgba(255, 212, 59, 0.12);
+  --cc-red: #ff6b6b;
+}
+:root:not(.dark) {
+  --cc-bg: #fafaf8;
+  --cc-surface: #ffffff;
+  --cc-raised: #f1f1ed;
+  --cc-line: #e4e4de;
+  --cc-fg: #0a0a0a;
+  --cc-dim: #64645e;
+  --cc-accent: #ffd43b;
+  --cc-accent-ink: #000000;
+  --cc-accent-text: #0a0a0a; /* yellow text is unreadable on white; use ink + yellow underline instead */
+  --cc-accent-soft: rgba(255, 212, 59, 0.28);
+  --cc-red: #d12f2f;
 }
 .cc-root {
-  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 14px;
-  line-height: 1.6;
+  font-family: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
   background: var(--cc-bg);
   color: var(--cc-fg);
-  font-feature-settings: "zero" 1; /* slashed zero: tell O from 0 in room names */
+  -webkit-font-smoothing: antialiased;
 }
-.cc-root ::selection { background: var(--cc-sel); }
+.cc-mono {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "zero" 1;
+}
+.cc-root ::selection { background: var(--cc-accent); color: var(--cc-accent-ink); }
 html, body { background: var(--cc-bg); }
 
-@keyframes cc-blink { 50% { opacity: 0; } }
-.cc-cursor { display: inline-block; width: 0.6em; height: 1.1em; vertical-align: -0.2em; background: var(--cc-blue); animation: cc-blink 1.1s steps(1) infinite; }
-@media (prefers-reduced-motion: reduce) { .cc-cursor { animation: none; } }
+@keyframes cc-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.55); } 70% { box-shadow: 0 0 0 7px rgba(255, 212, 59, 0); } }
+.cc-live { animation: cc-pulse 2.4s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cc-live { animation: none; } }
