@@ -3,7 +3,6 @@
 import { useEffect, useState, type FormEvent } from "react"
 import QRCode from "qrcode"
 import { formatDistanceToNowStrict } from "date-fns"
-import { Copy, Lock, RotateCcw } from "lucide-react"
 import { LIMITS, type RoomVersion } from "@/lib/room"
 import { cn, Dialog, Spinner, t } from "./ui"
 
@@ -16,7 +15,7 @@ export function UnlockDialog({
 }: {
   open: boolean
   room: string
-  onSubmit: (password: string) => Promise<string | null> // returns error message or null
+  onSubmit: (password: string) => Promise<string | null>
 }) {
   const [pw, setPw] = useState("")
   const [err, setErr] = useState<string | null>(null)
@@ -31,26 +30,28 @@ export function UnlockDialog({
 
   return (
     <Dialog open={open} onClose={() => {}} title="This room is locked" dismissible={false}>
-      <form onSubmit={submit} className="space-y-4">
-        <p className={cn("text-sm", t.muted)}>
-          Enter the password for <span className="font-mono">{room}</span> to view and edit it.
+      <form onSubmit={submit} className="space-y-3">
+        <p className={t.dim}>
+          Enter the password for <span className={t.fg}>{room}</span>.
         </p>
-        <input
-          type="password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          autoComplete="current-password"
-          aria-label="Room password"
-          placeholder="Password"
-          className={cn("w-full rounded-lg px-3 py-2", t.input, t.focus)}
-        />
-        {err && <p className="text-sm text-red-600 dark:text-red-400">{err}</p>}
-        <div className="flex items-center justify-between">
-          <a href="/" className={cn("text-sm underline underline-offset-2", t.muted)}>
-            New room instead
+        <label className="flex items-center gap-2">
+          <span className={t.blue}>password:</span>
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            autoComplete="current-password"
+            aria-label="Room password"
+            className={cn("flex-1 px-2 py-1", t.field)}
+          />
+        </label>
+        {err && <p className={t.red}>✗ {err}</p>}
+        <div className="flex items-center justify-between pt-1">
+          <a href="/" className={cn(t.cmdDim, t.focus)}>
+            new room instead
           </a>
-          <button type="submit" disabled={busy || !pw} className={cn(t.primaryBtn, "px-5 py-2", t.focus)}>
-            {busy ? <Spinner /> : <Lock className="h-4 w-4" />} Unlock
+          <button type="submit" disabled={busy || !pw} className={cn(t.primary, t.focus)}>
+            {busy && <Spinner />} unlock
           </button>
         </div>
       </form>
@@ -98,30 +99,34 @@ export function LockDialog({
   return (
     <Dialog open={open} onClose={onClose} title={locked ? "Room lock" : "Lock this room"}>
       <form onSubmit={submit} className="space-y-3">
-        <p className={cn("text-sm", t.muted)}>
+        <p className={t.dim}>
           {locked
-            ? "This room is locked. Set a new password, or remove the lock to make it public again."
-            : "Anyone with the link will need this password to view or edit the room. Share it separately."}
+            ? "Set a new password, or remove the lock to make the room public again."
+            : "Anyone opening this room will need the password to read or edit it. Share it separately from the link."}
         </p>
-        <input
-          type="password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          placeholder={locked ? "New password" : "Password"}
-          aria-label="Password"
-          autoComplete="new-password"
-          className={cn("w-full rounded-lg px-3 py-2", t.input, t.focus)}
-        />
-        <input
-          type="password"
-          value={pw2}
-          onChange={(e) => setPw2(e.target.value)}
-          placeholder="Confirm password"
-          aria-label="Confirm password"
-          autoComplete="new-password"
-          className={cn("w-full rounded-lg px-3 py-2", t.input, t.focus)}
-        />
-        <p className={cn("text-xs", mismatch ? "text-red-600 dark:text-red-400" : t.muted)}>
+        <label className="flex items-center gap-2">
+          <span className={cn("w-[9ch]", t.blue)}>{locked ? "new:" : "password:"}</span>
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            aria-label="Password"
+            autoComplete="new-password"
+            className={cn("flex-1 px-2 py-1", t.field)}
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <span className={cn("w-[9ch]", t.blue)}>confirm:</span>
+          <input
+            type="password"
+            value={pw2}
+            onChange={(e) => setPw2(e.target.value)}
+            aria-label="Confirm password"
+            autoComplete="new-password"
+            className={cn("flex-1 px-2 py-1", t.field)}
+          />
+        </label>
+        <p className={cn("text-[13px]", mismatch ? t.red : t.dim)}>
           {mismatch ? "Passwords don't match." : `At least ${LIMITS.minPassword} characters.`}
         </p>
         <div className="flex items-center justify-between pt-1">
@@ -134,15 +139,15 @@ export function LockDialog({
                 await onUnlock()
                 setBusy(false)
               }}
-              className={cn(t.ghostBtn, "text-sm text-red-600 dark:text-red-400")}
+              className={cn(t.cmd, "text-[var(--cc-red)] hover:bg-[var(--cc-red)]", t.focus)}
             >
-              Remove lock
+              remove lock
             </button>
           ) : (
             <span />
           )}
-          <button type="submit" disabled={busy || tooShort || pw !== pw2} className={cn(t.primaryBtn, "px-5 py-2", t.focus)}>
-            {busy ? <Spinner /> : <Lock className="h-4 w-4" />} {locked ? "Change password" : "Lock room"}
+          <button type="submit" disabled={busy || tooShort || pw !== pw2} className={cn(t.primary, t.focus)}>
+            {busy && <Spinner />} {locked ? "change password" : "lock room"}
           </button>
         </div>
       </form>
@@ -157,7 +162,7 @@ export function QrDialog({ open, url, onClose, onCopy }: { open: boolean; url: s
 
   useEffect(() => {
     if (!open || !url) return
-    QRCode.toDataURL(url, { margin: 1, width: 480, color: { dark: "#0F172A", light: "#FFFFFF" } })
+    QRCode.toDataURL(url, { margin: 1, width: 480, color: { dark: "#111317", light: "#ffffff" } })
       .then(setSrc)
       .catch(() => setSrc(null))
   }, [open, url])
@@ -165,21 +170,21 @@ export function QrDialog({ open, url, onClose, onCopy }: { open: boolean; url: s
   return (
     <Dialog open={open} onClose={onClose} title="Open on another device">
       <div className="flex flex-col items-center gap-4">
-        <div className="rounded-xl bg-white p-3">
+        <div className="bg-white p-2">
           {src ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt={`QR code for ${url}`} className="h-60 w-60" />
+            <img src={src} alt={`QR code for ${url}`} className="h-56 w-56 [image-rendering:pixelated]" />
           ) : (
-            <div className="flex h-60 w-60 items-center justify-center">
-              <Spinner className="h-6 w-6 text-slate-400" />
+            <div className="flex h-56 w-56 items-center justify-center text-slate-500">
+              <Spinner />
             </div>
           )}
         </div>
-        <p className={cn("text-center text-sm", t.muted)}>Scan with your phone camera to open this room.</p>
-        <div className={cn("flex w-full items-center gap-2 rounded-lg px-3 py-2", t.surface)}>
-          <span className={cn("flex-1 truncate font-mono text-xs", t.text)}>{url}</span>
-          <button onClick={onCopy} className={t.ghostBtn} aria-label="Copy room link">
-            <Copy className="h-4 w-4" /> Copy link
+        <p className={t.dim}>Scan with your phone camera.</p>
+        <div className={cn("flex w-full items-center gap-2 border px-2 py-1", t.line)}>
+          <span className={cn("flex-1 truncate text-[13px]", t.fg)}>{url}</span>
+          <button onClick={onCopy} className={cn(t.cmd, t.focus)} aria-label="Copy room link">
+            copy link
           </button>
         </div>
       </div>
@@ -215,26 +220,26 @@ export function HistoryDialog({
   return (
     <Dialog open={open} onClose={onClose} title="Previous versions">
       {err ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{err}</p>
+        <p className={t.red}>✗ {err}</p>
       ) : versions === null ? (
-        <div className="flex justify-center py-6">
-          <Spinner className="h-5 w-5 text-slate-400" />
-        </div>
+        <p className={t.dim}>
+          <Spinner /> loading
+        </p>
       ) : versions.length === 0 ? (
-        <p className={cn("text-sm", t.muted)}>No earlier versions yet. Each save keeps the previous text here (last 5).</p>
+        <p className={t.dim}>No earlier versions yet. Each post keeps the text it replaced, up to 5.</p>
       ) : (
-        <ul className="max-h-[60vh] space-y-2 overflow-auto">
+        <ul className="max-h-[60vh] space-y-3 overflow-auto">
           {versions.map((v) => (
-            <li key={v.id} className={cn("rounded-lg p-3", t.surface)}>
-              <div className="mb-1 flex items-center justify-between">
-                <span className={cn("text-xs", t.muted)}>
-                  {formatDistanceToNowStrict(new Date(v.createdAt), { addSuffix: true })} · {v.body.length} chars
+            <li key={v.id} className={cn("border-l-2 pl-3", t.line)}>
+              <div className="flex items-center justify-between text-[13px]">
+                <span className={t.dim}>
+                  {formatDistanceToNowStrict(new Date(v.createdAt), { addSuffix: true })}, {v.body.length} chars
                 </span>
-                <button onClick={() => onRestore(v)} className={t.ghostBtn}>
-                  <RotateCcw className="h-3.5 w-3.5" /> Restore
+                <button onClick={() => onRestore(v)} className={cn(t.cmd, t.focus)}>
+                  restore
                 </button>
               </div>
-              <p className={cn("line-clamp-3 whitespace-pre-wrap break-words text-sm", t.text)}>{v.body}</p>
+              <p className={cn("line-clamp-3 whitespace-pre-wrap break-words", t.fg)}>{v.body}</p>
             </li>
           ))}
         </ul>
